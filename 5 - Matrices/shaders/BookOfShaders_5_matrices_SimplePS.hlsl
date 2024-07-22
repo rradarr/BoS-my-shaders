@@ -22,12 +22,13 @@ float crossShape(float2 uv, float size)
 
 float flattenedCos(float x, float flatness)
 {
+	// I found this on SO, don't ask.
 	return sqrt((1+pow(flatness,2))/(1+pow(flatness,2)*pow(cos(uTime), 2)))*cos(uTime);
 }
 
 float movingCrossShape(float2 uv, float size)
 {
-	// There is a - instead of a + here because we are not moving
+	// There is a '-' instead of a '+' here because we are not moving
 	// points in a space, we are moving the entire space. (akin to
 	// subtracting from x to 'move' a graph of f(x) to the right)
 	uv -= float2(0.5);
@@ -39,7 +40,7 @@ float movingCrossShape(float2 uv, float size)
 	return crossShape(uv, size); 
 }
 
-float2x2 rotate(float angle)
+float2x2 getRotationMat(float angle)
 {
 	return float2x2(cos(angle),-sin(angle),
                 sin(angle),cos(angle));
@@ -51,12 +52,30 @@ float rotatingCrossShape(float2 uv, float size)
 	// order of center-rotate-reposition when rotating vertices
 	// is kind of reversed, again because we are manipulating the
 	// space rather than points within it. So:
-	uv -= float2(0.5); 				// We move the (0,0) point to the center of the screen
-	uv = rotate(uTime*0.4) * uv;	// We rotate around the (0,0) point, as always
-	//uv -= float2(0.2); 			// Now we could modify the coordiantes further,
-									// essentialy offsetting by a rotated vector
+	uv -= float2(0.5); 						// We move the (0,0) point to the center of the screen;
+	uv = getRotationMat(uTime*0.4) * uv;	// We rotate around the (0,0) point, as always;
+	//uv -= float2(0.2); 					// Now we could modify the coordiantes further,
+											// essentialy offsetting by a rotated vector.
 
 	return crossShape(uv, size);
+}
+
+float movingAndRotatingCrossShape(float2 uv)
+{
+	float retVal = 0;
+	
+	// Scale and position our composition.
+	uv *= 1.3;
+	uv -= float2(0.15, 0.25);
+	retVal += movingCrossShape(uv, 0.2);
+	
+	// Position the second cross and use the flattenedCos function to control the rotation.
+	uv -= float2(0.5, -0.1);
+	float timeControl = -flattenedCos(uTime, 4) * 1.4 * PI;
+	uv = getRotationMat(timeControl) * uv;
+	retVal += crossShape(uv, 0.2);
+	
+	return retVal;
 }
 
 float4 main(float4 fragCoord : SV_POSITION) : SV_TARGET
@@ -68,7 +87,8 @@ float4 main(float4 fragCoord : SV_POSITION) : SV_TARGET
 
    	//val += box(uv, float2(0.6));
    	//val = movingCrossShape(uv, 0.2);
-   	val = rotatingCrossShape(uv, 0.2);
+   	//val = rotatingCrossShape(uv, 0.2);
+   	val = movingAndRotatingCrossShape(uv);
 
     
     return float4(val, 1.0f);
