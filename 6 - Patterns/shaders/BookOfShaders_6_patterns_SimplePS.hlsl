@@ -2,6 +2,7 @@ cbuffer vars : register(b0)
 {
 	float2 uResolution;
 	float uTime;
+	float2 uMouse;
 };
 
 #define PI 3.14159265359
@@ -170,6 +171,49 @@ float3 getLayeredPattern(float2 uv, float gridSize)
 	return color;
 }
 
+float3 getInteractiveBrickPattern(float2 uv, float gridSize)
+{
+	const float2 originalUV = uv;
+	
+	uv = uv*gridSize;
+	
+	float2 brickOffsets = step(1, frac(originalUV.y*gridSize/2)*2);
+	uv.x += brickOffsets.y * 0.5;
+	
+	uv = frac(uv);
+	
+	float2 mouseSat = saturate(uMouse);
+	uv.x = (sin(uv.x*2+PI*0.7-mouseSat*PI)+1)/2;
+	
+	return uv.x;
+}
+
+float3 getAnimatedBrickPattern(float2 uv, float gridSize)
+{
+	const float2 originalUV = uv;
+	
+	uv = uv*gridSize;
+	float2 brickOffsets = step(1, frac(originalUV*gridSize/2)*2);
+	
+	// Bricks moving in same direction.
+	//uv.x += brickOffsets.y * (0.5 + uTime);
+	//uv.y += brickOffsets.x * (0.5 + uTime);
+	
+	// Bricks moving in opposite directions. (Return either uv.x or uv.y to see the effects.)
+	//uv.x += (brickOffsets.y*2 -1) * (0.5 + uTime/8);
+	//uv.y += (brickOffsets.x*2 -1) * (0.5 + uTime/8);
+	
+	// Bricks alternating movement.
+	const float timeScale = 0.5;
+	float timeDriver = step(1, frac(uTime/2 * timeScale)*2); // Changes between 1 and 0 every second.
+	float2 timeController = float2(timeDriver, 1-timeDriver); // Used to complementarily 'mute' x or y offsets.
+	uv.xy += (brickOffsets.yx*2-1) * timeController.xy * (uTime*timeScale);
+	
+	uv = frac(uv);
+	
+	return step(0.2, length(uv-0.5));
+}
+
 float4 main(float4 fragCoord : SV_POSITION) : SV_TARGET
 {
     float2 uv = fragCoord.xy/uResolution;
@@ -185,6 +229,8 @@ float4 main(float4 fragCoord : SV_POSITION) : SV_TARGET
     color = getTicTacToe(uv);
     color = getAnimatedPattern(uv);
  	color = getLayeredPattern(uv, 10);
+ 	color = getInteractiveBrickPattern(uv, 6);
+  	color = getAnimatedBrickPattern(uv, 10);
        
     return float4(color, 1.0f);
 }
